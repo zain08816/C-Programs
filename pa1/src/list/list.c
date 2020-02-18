@@ -23,7 +23,7 @@ struct Node *delete(int data, struct Node *head){
 
     if (head -> data == data) {
         if (head -> next == NULL) {
-            head == head -> next;
+            head = head -> next;
             return head;
         }
         head = head -> next;
@@ -34,7 +34,6 @@ struct Node *delete(int data, struct Node *head){
     while (curr != NULL) { 
         if (curr -> data == data) {
             prev -> next = curr -> next;
-            free(curr);
         }
         prev = curr;
         curr = curr -> next;
@@ -47,18 +46,22 @@ struct Node *delete(int data, struct Node *head){
 struct Node *insert(int data, struct Node *head) {
     struct Node *insert = newNode(data);
 
-    if (head == NULL || head -> data >= insert -> data){
+    if (head == NULL || head -> data > data){
+        // puts("head is null\n");
         insert -> next = head;
         head = insert;
+    } else if (head -> data == data) {
+        free(insert);
+
     } else {
         struct Node *curr = head;
-        while (curr -> next != NULL && curr -> next -> data <= insert -> data) {
-            if (curr -> data == insert -> data) {
+        while (curr -> next != NULL && curr -> next -> data <= data) {
+            if (curr -> next -> data == data) {
+                free(insert);
                 return head;
             }
             curr = curr -> next;
         }
-
         insert -> next = curr -> next;
         curr -> next = insert;
     }
@@ -66,9 +69,51 @@ struct Node *insert(int data, struct Node *head) {
     return head;
 }
 
+void print_list(struct Node *head) {
+    struct Node *curr = head;
+    int length = 0;
+
+    while (curr!= NULL) {
+        length += 1;
+        curr = curr -> next;
+    }
+
+    curr = head;
+    printf("%d :", length);
+
+    while (curr!= NULL) {
+        printf(" %d", curr -> data);
+        curr = curr -> next;
+    }
+    printf("\n");
+}
+
 
 int main(int argc, char **argv) {
 
+    struct Node *head = NULL;
+    char operation;
+    int data ;
 
-    
+    while (scanf(" %c %d\n", &operation, &data) != EOF) {
+
+        switch (operation) {
+            case 'i' :
+                head = insert(data, head);
+                print_list(head);
+                break;
+
+            case 'd' :
+                head = delete(data, head);
+                print_list(head);
+                break;
+
+            default:
+                return 0;
+        }
+
+    }
+
+    return 0;
+
 }
