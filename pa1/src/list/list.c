@@ -93,9 +93,19 @@ int main(int argc, char **argv) {
 
     struct Node *head = NULL;
     char operation;
-    int data ;
+    int data;
+    int ret;
 
-    while (scanf(" %c %d\n", &operation, &data) != EOF) {
+    while (1) {
+
+        ret = scanf(" %c %d", &operation, &data);
+
+        if (ret == EOF) {
+            break;
+
+        }
+
+
 
         switch (operation) {
             case 'i' :
