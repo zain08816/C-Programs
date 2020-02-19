@@ -1,37 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int multiply(int power, int size, int **matrix) {
-    int i, j, k, h;
-    int total = 0;
-
-    int **result = malloc(size * sizeof(int*));
-    for(i = 0; i < size; i += 1){
-        result[i] = malloc(size * sizeof(int));
-    }
-
-    for(h = 0; h < power; h += 1) {
-        for (i = 0; i < size; i += 1){
-            for(j = 0; j < size; j += 1){
-                total = 0;
-                for(k = 0; k < size; k += 1){
-                    total += matrix[i][k] * matrix[k][j];
-                }
-                result[i][j] = total;
-            }
-        }
-        for (j = 0; j < size; j += 1){
-            for (k = 0; k < size; k += 1){
-                result[j][k] = matrix[j][k];
-            }
-        }
-    }
-
-    print_mat(size, matrix);
-
-    return 0;
-}
-
 void print_mat(int size, int **matrix) {
     int i, j;
     for (i = 0; i < size; i += 1) {
@@ -47,6 +16,55 @@ void print_mat(int size, int **matrix) {
     return;
 }
 
+int multiply(int power, int size, int **matrix) {
+    int i, j, k, h;
+    int total = 0;
+
+    int **result = malloc(size * sizeof(int*));
+    for(i = 0; i < size; i += 1){
+        result[i] = malloc(size * sizeof(int));
+    }
+
+    int **temp = malloc(size * sizeof(int*));
+    for(i = 0; i < size; i += 1){
+        temp[i] = malloc(size * sizeof(int));
+    }
+
+
+
+    for (i = 0; i < size; i += 1){
+        for(j = 0; j < size; j += 1){
+            total = 0;
+            for(k = 0; k < size; k += 1){
+                total += matrix[i][k] * matrix[k][j];
+            }
+            // printf("%d ", total);
+            temp[i][j] = total;
+        }
+    }
+
+    for(h = 0; h < power-2; h += 1) {
+        for (i = 0; i < size; i += 1){
+            for(j = 0; j < size; j += 1){
+                total = 0;
+                for(k = 0; k < size; k += 1){
+                    total += temp[i][k] * matrix[k][j];
+                }
+                // printf("%d ", total);
+                result[i][j] = total;
+            }
+        }
+        for (j = 0; j < size; j += 1){
+            for (k = 0; k < size; k += 1){
+                temp[j][k] = result[j][k];
+            }
+        }
+    }
+
+    print_mat(size, temp);
+
+    return 0;
+}
 
 void print_identity(int size) {
     int i, j;
@@ -100,20 +118,22 @@ int main(int argc, char **argv) {
             matrix[j][k] = num;
         }
     }
+
     fscanf(file, "%d", &power);
 
 
     if (power == 0) {
         print_identity(size);
+        fclose(file);
+        return 0;
+    } else if (power == 1) {
+        print_mat(size, matrix);
+        fclose(file);
+        return 0;
+    } else {
+        multiply(power, size, matrix);
+        fclose(file);
         return 0;
     }
 
-
-    multiply(power, size, matrix);
-    
-
-    // printf("%s\n", path);
-    fclose(file);
-    
-    return 0;
 }
