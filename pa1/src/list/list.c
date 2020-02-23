@@ -52,7 +52,7 @@ struct Node *insert(int data, struct Node *head) {
         head = insert;
     } else if (head -> data == data) {
         free(insert);
-
+        return head;
     } else {
         struct Node *curr = head;
         while (curr -> next != NULL && curr -> next -> data <= data) {
@@ -94,16 +94,16 @@ int main(int argc, char **argv) {
     struct Node *head = NULL;
     char operation;
     int data;
-    int ret;
+    // int ret;
 
-    while (1) {
+    while (scanf(" %c %d", &operation, &data) != EOF) {
 
-        ret = scanf(" %c %d", &operation, &data);
+        // ret = scanf(" %c %d", &operation, &data);
 
-        if (ret == EOF) {
-            break;
+        // if (ret == EOF) {
+        //     break;
 
-        }
+        // }
 
 
 
