@@ -146,6 +146,15 @@ struct Node *delete(int data, struct Node *root) {
 
 }
 
+void free_bst(struct Node *root) {
+    if (root != NULL) {
+        return;
+    }
+    free_bst(root -> left);
+    free_bst(root -> right);
+    free(root);
+}
+
 
 
 int main(int argc, char **argv) {
@@ -193,6 +202,9 @@ int main(int argc, char **argv) {
 
     }
 
+
+    free_bst(root);
+    
     return 0;
 
 }
