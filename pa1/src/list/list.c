@@ -17,6 +17,7 @@ struct Node *newNode(int data){
 }
 
 struct Node *delete(int data, struct Node *head){
+
     if (head == NULL){
         return head;
     }
@@ -34,6 +35,8 @@ struct Node *delete(int data, struct Node *head){
     while (curr != NULL) { 
         if (curr -> data == data) {
             prev -> next = curr -> next;
+            free(curr);
+            return head;
         }
         prev = curr;
         curr = curr -> next;
@@ -123,7 +126,14 @@ int main(int argc, char **argv) {
         }
 
     }
-
+    
+    struct Node *prev = head -> next;
+    while (head -> next != NULL) {
+        prev = head;
+        head = head -> next;
+        free(prev);
+    }
+        
     return 0;
 
 }

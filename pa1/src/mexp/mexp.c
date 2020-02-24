@@ -63,6 +63,13 @@ int multiply(int power, int size, int **matrix) {
 
     print_mat(size, temp);
 
+    for(i = 0; i < size; i += 1) {
+        free(temp[i]);
+        free(result[i]);
+    }
+    free(temp);
+    free(result);
+
     return 0;
 }
 
@@ -125,15 +132,20 @@ int main(int argc, char **argv) {
     if (power == 0) {
         print_identity(size);
         fclose(file);
-        return 0;
     } else if (power == 1) {
         print_mat(size, matrix);
         fclose(file);
-        return 0;
     } else {
         multiply(power, size, matrix);
         fclose(file);
-        return 0;
     }
+
+    for(i = 0; i < size; i += 1) {
+        free(matrix[i]);
+    }
+    free(matrix);
+
+    return 0;
+
 
 }
