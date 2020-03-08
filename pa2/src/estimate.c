@@ -41,7 +41,7 @@ double **transpose(double **start, double **result, int x, int y) {
 
 
 double **inverse(double **matrix, double **identity, int size) {
-	int i, p, j, k, g, f;
+	int i, p, j, k, f;
 
 	for(p = 0; p < size; p += 1) {
 		f = matrix[p][p];
@@ -72,6 +72,7 @@ double **inverse(double **matrix, double **identity, int size) {
 			}
 
 		}
+
 	}
 
 
@@ -101,35 +102,49 @@ int main(int argc, char **argv) {
 	fscanf(train_f, " %d\n", &t_rows);
 
 
-
+	// allocating memory based on size
 	double **X = malloc(t_rows * sizeof(double*));
     for(i = 0; i < t_rows; i += 1){
         X[i] = malloc(attrib+1 * sizeof(double));
-    }
+    } // t_rows x attrib+1
+
 	double **Xt = malloc(attrib+1 * sizeof(double*));
     for(i = 0; i < attrib+1; i += 1){
-        X[i] = malloc(t_rows * sizeof(double));
-    }
-
-	double **identity = malloc(t_rows * sizeof(double*));
-    for(i = 0; i < t_rows; i += 1){
-        identity[i] = malloc(t_rows * sizeof(double));
-    }
+        Xt[i] = malloc(t_rows * sizeof(double));
+    } // attrib+1 x t_rows
 
 	double **Y = malloc(t_rows * sizeof(double*));
     for(i = 0; i < t_rows; i += 1){
         Y[i] = malloc(1 * sizeof(double));
-    }
+    } //t_rows x 1
 
-	double **W = malloc(t_rows * sizeof(double*));
-    for(i = 0; i < t_rows; i += 1){
+	double **W = malloc(attrib+1 * sizeof(double*));
+    for(i = 0; i < attrib+1; i += 1){
         W[i] = malloc(1 * sizeof(double));
-    }
+    } //attrib+1 x 1
+
+	double **XtY = malloc(attrib+1 * sizeof(double*));
+    for(i = 0; i < attrib+1; i += 1){
+        XtY[i] = malloc(1 * sizeof(double));
+    } // attrib+1 x t_rows| t_rows x 1 = attrib+1 x 1
+
+	double **XtX = malloc(attrib+1 * sizeof(double*));
+    for(i = 0; i < attrib+1; i += 1){
+        XtX[i] = malloc(t_rows * sizeof(double));
+    } // attrib+1 x t_rows | t_rows x attrib+1 = attrib+1 x attrib+1
+
+	double **identity = malloc(attrib+1 * sizeof(double*));
+    for(i = 0; i < attrib+1; i += 1){
+        identity[i] = malloc(attrib+1 * sizeof(double));
+    } // attrib+1 x attrib+1 
+
+
 	
 
 
 
 
+	// copying data to proper locations
 	int j, k;
 	double num;
     for(j = 0; j < t_rows; j += 1){
@@ -144,20 +159,23 @@ int main(int argc, char **argv) {
 
     }
 
-	for(j = 0; j < t_rows; j += 1){
-		for (k = 0; k < t_rows; k += 1) {
+
+	for(j = 0; j < attrib+1; j += 1){
+		for (k = 0; k < attrib+1; k += 1) {
 			if (j == k) {
 				identity[j][k] = 1.0;
 			} else {
 				identity[j][k] = 0.0;
 			}
+		}
 	}
 
-	Xt = transpose(X, Xt, t_rows, attrib+1);
 
-	
-
-
+	//doing the math
+	Xt = transpose(X, Xt, t_rows, attrib+1); // attrib+1 x t_rows
+	XtY = multiply(X, t_rows, attrib+1, Y, t_rows, 1, XtY); // attrib+1 x t_rows| t_rows x 1 = attrib+1 x 1
+	XtX = multiply(X, t_rows, attrib+1, Xt, attrib+1, t_rows, XtX); // attrib+1 x t_rows | t_rows x attrib+1 = attrib+1 x attrib+1
+	identity = inverse(XtX, identity, attrib+1); // 
 
 	
 
@@ -167,7 +185,7 @@ int main(int argc, char **argv) {
 	// Y nx1 (Data)
 	// X nxm (Train)
 
-	
+	fclose(train_f);
 	
 	return 0;
 }
