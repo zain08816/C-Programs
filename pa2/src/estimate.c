@@ -15,18 +15,22 @@ double **multiply(double **mat1, int x1, int y1, double **mat2, int x2, int y2, 
 
 	for (i = 0; i < x1; i += 1){
 		for(j = 0; j < y2; j += 1){
-			total = 0.0;
 			for (k = 0; k < y1; k += 1){
+				// printf(" %d ", k);
 				total += mat1[i][k] * mat2[k][j];
+				// printf("%.2f", mat1[i][k]);
+				// printf("*%.2f=", mat2[k][j]);
+				// printf("%.2f", total);
 			}
+			// printf("\n");
 			// printf("%d ", total);
-			printf("%.2f\t", total);
+			// printf("%.2f\t", total);
+			
 			result[i][j] = total;
+			total = 0.0;
 		}
 		printf("\n");
     }
-
-
 
 	return result;
 }
@@ -58,7 +62,7 @@ double **inverse(double **matrix, double **identity, int size) {
 		}
 		
 		for( i = p + 1; i < size; i += 1) {
-			f = matrix[k][p];
+			f = matrix[i][p];
 
 			for(k = 0; k < size; k += 1) {
 				identity[i][k] = (identity[p][k] * f) - identity[i][k];
@@ -100,6 +104,16 @@ void print_mat(double **matrix, int row, int col) {
     return;
 }
 
+void set_zero(double **matrix, int row, int col){
+	int i, j;
+	for (i = 0; i < row; i += 1) {
+		for (j = 0; j < col; j += 1) {
+			matrix[i][j] = 0;
+		}
+	}
+	return;
+}
+
 
 
 int main(int argc, char **argv) {
@@ -128,36 +142,43 @@ int main(int argc, char **argv) {
     for(i = 0; i < t_rows; i += 1){
         X[i] = malloc((attrib+1) * sizeof(double));
     } // t_rows x attrib+1
+	set_zero(X, t_rows, attrib+1);
 
 	double **Xt = malloc((attrib+1) * sizeof(double*));
     for(i = 0; i < (attrib+1); i += 1){
         Xt[i] = malloc(t_rows * sizeof(double));
     } // attrib+1 x t_rows
+	set_zero(Xt, attrib+1, t_rows);
 
 	double **Y = malloc(t_rows * sizeof(double*));
     for(i = 0; i < t_rows; i += 1){
         Y[i] = malloc(1 * sizeof(double));
     } //t_rows x 1
+	set_zero(Y, t_rows, 1);
 
 	double **W = malloc((attrib+1) * sizeof(double*));
     for(i = 0; i < (attrib+1); i += 1){
         W[i] = malloc(1 * sizeof(double));
     } //attrib+1 x 1
+	set_zero(W, attrib+1, 1);
 
 	double **XtY = malloc((attrib+1) * sizeof(double*));
     for(i = 0; i < (attrib+1); i += 1){
         XtY[i] = malloc(1 * sizeof(double));
     } // attrib+1 x t_rows| t_rows x 1 = attrib+1 x 1
+	set_zero(XtY, attrib+1, 1);
 
 	double **XtX = malloc((attrib+1) * sizeof(double*));
     for(i = 0; i < (attrib+1); i += 1){
         XtX[i] = malloc(t_rows * sizeof(double));
     } // attrib+1 x t_rows | t_rows x attrib+1 = attrib+1 x attrib+1
+	set_zero(XtX, attrib+1, attrib+1);
 
 	double **identity = malloc((attrib+1) * sizeof(double*));
     for(i = 0; i < (attrib+1); i += 1){
         identity[i] = malloc((attrib+1) * sizeof(double));
     } // attrib+1 x attrib+1 
+	set_zero(identity, attrib+1, attrib+1);
 
 
 	
@@ -197,23 +218,31 @@ int main(int argc, char **argv) {
 
 	//doing the math
 
-	Xt = transpose(X, Xt, t_rows, attrib+1); // attrib+1 x t_rows
-	XtY = multiply(X, t_rows, attrib+1, Y, t_rows, 1, XtY); // attrib+1 x t_rows| t_rows x 1 = attrib+1 x 1
-	XtX = multiply(X, t_rows, attrib+1, Xt, attrib+1, t_rows, XtX); // attrib+1 x t_rows | t_rows x attrib+1 = attrib+1 x attrib+1
-	// identity = inverse(XtX, identity, attrib+1); // attrib+1 x attrib+1
+	
+	
+	
+	identity = inverse(XtX, identity, attrib+1); // attrib+1 x attrib+1
 
 	puts("X");
 	print_mat(X, t_rows, attrib+1);
-	puts("Xt");
-	print_mat(Xt, attrib+1, t_rows);
+
 	puts("Y");
 	print_mat(Y, t_rows, 1);
+	
+	Xt = transpose(X, Xt, t_rows, attrib+1); // attrib+1 x t_rows
+	puts("Xt");
+	print_mat(Xt, attrib+1, t_rows);
+
+	XtY = multiply(Xt, t_rows, attrib+1, Y, t_rows, 1, XtY); // attrib+1 x t_rows| t_rows x 1 = attrib+1 x 1
 	puts("XtY");
 	print_mat(XtY, attrib+1, 1);
+
+	XtX = multiply(X, t_rows, attrib+1, Xt, attrib+1, t_rows, XtX); // attrib+1 x t_rows | t_rows x attrib+1 = attrib+1 x attrib+1
 	puts("XtX");
 	print_mat(XtX, attrib+1, attrib+1);
-	// puts("identity\n");
-	// print_mat(identity, attrib+1, attrib+1);
+
+	puts("identity");
+	print_mat(identity, attrib+1, attrib+1);
 
 	
 
