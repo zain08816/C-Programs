@@ -128,18 +128,23 @@ void set_zero(double **matrix, int row, int col){
 int main(int argc, char **argv) {
 	int i;
 	char *train_path = argv[1];
-	// char *data_path = argv[2];
+	char *data_path = argv[2];
 	int attrib, t_rows;
+	int d_attrib, houses;
 	char train_name[6];
+	char data_name[5];
 
-	FILE *file = fopen(train_path, "r");
+	FILE *data_f = fopen(data_path, "r");
+	FILE *train_f = fopen(train_path, "r");
 
-	if (file == NULL) {
+	if (train_f == NULL) {
         puts("Invalid Path\n");
         exit(1);
     }
 
-	FILE *train_f = fopen(train_path, "r");
+	fscanf(data_f, " %s", data_name);
+	fscanf(data_f, " %d", &d_attrib);
+	fscanf(data_f, " %d\n", &houses);
 	
 	fscanf(train_f, " %s", train_name);
 	fscanf(train_f, " %d", &attrib);
@@ -189,8 +194,20 @@ int main(int argc, char **argv) {
     } // attrib+1 x attrib+1 
 	set_zero(identity, attrib+1, attrib+1);
 
+	double **X_prime = malloc((houses) * sizeof(double*));
+    for(i = 0; i < (houses); i += 1){
+        X_prime[i] = malloc((d_attrib+1) * sizeof(double));
+    } // houses x d_attrib+1
+	set_zero(X_prime, houses, d_attrib+1);
 
-	
+	double **Y_prime = malloc((houses) * sizeof(double*));
+    for(i = 0; i < (houses); i += 1){
+        Y_prime[i] = malloc(1 * sizeof(double));
+    } // houses x 1
+	set_zero(Y_prime, houses, 1);
+
+
+
 
 
 
@@ -209,8 +226,17 @@ int main(int argc, char **argv) {
 			// printf("%.0f\n", num);
             X[j][k] = num;
         }
-
     }
+
+	//setting up W_prime with data
+	for (j = 0; j < houses; j += 1) {
+		X_prime[j][0] = 1.0;
+		for(k = 1; k < d_attrib+1; k += 1) {
+            fscanf(data_f, " %lf", &num);
+			// printf("%.0f\n", num);
+            X_prime[j][k] = num;
+		}	
+	}
 	
 
 
@@ -223,22 +249,24 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	puts("identity");
-	print_mat(identity, attrib+1, attrib+1);
+	
 
 
 	//doing the math
 
 	
 	
-	
-	
+	puts("identity");
+	print_mat(identity, attrib+1, attrib+1);
 
 	puts("X");
 	print_mat(X, t_rows, attrib+1);
 
 	puts("Y");
 	print_mat(Y, t_rows, 1);
+
+	puts("X_prime");
+	print_mat(X_prime, houses, d_attrib+1);
 	
 	Xt = transpose(X, Xt, t_rows, attrib+1); // attrib+1 x t_rows
 	puts("Xt");
@@ -256,8 +284,14 @@ int main(int argc, char **argv) {
 	puts("identity");
 	print_mat(identity, attrib+1, attrib+1);
 
-	
+	W = multiply(identity, attrib+1, attrib+1, XtY, attrib+1, 1, W); //attrib+1 x 1
+	puts("W");
+	print_mat(W, attrib+1, 1);
 
+	
+	Y_prime = multiply(X_prime, houses, d_attrib+1, W, attrib+1, 1, Y_prime); // houses x 1
+	puts("Y_prime");
+	print_mat(Y_prime, houses, 1);
 	
 
 	// W = (XtX)^-1XtY
@@ -265,6 +299,7 @@ int main(int argc, char **argv) {
 	// X nxm (Train)
 
 	fclose(train_f);
+	fclose(data_f);
 	
 	return 0;
 }
