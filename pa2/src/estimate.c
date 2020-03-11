@@ -3,6 +3,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void print_mat(double **matrix, int row, int col) {
+    int i, j;
+    for (i = 0; i < row; i += 1) {
+        for (j = 0; j < col; j += 1) {
+            if (j == col - 1){
+                printf("%.2f", matrix[i][j]);
+                continue;
+            }
+            printf("%.2f ", matrix[i][j]);
+        }
+        printf("\n");
+    }
+    return;
+}
+
 double **multiply(double **mat1, int x1, int y1, double **mat2, int x2, int y2, double **result) {
 	int i, j, k;
 	double total;
@@ -11,7 +26,7 @@ double **multiply(double **mat1, int x1, int y1, double **mat2, int x2, int y2, 
 		printf("non multipliable matrixies");
 		return NULL;
 	}
-	puts("multipying");
+	// puts("multipying");
 
 	for (i = 0; i < x1; i += 1){
 		for(j = 0; j < y2; j += 1){
@@ -29,7 +44,7 @@ double **multiply(double **mat1, int x1, int y1, double **mat2, int x2, int y2, 
 			result[i][j] = total;
 			total = 0.0;
 		}
-		printf("\n");
+		// printf("\n");
     }
 
 	return result;
@@ -52,6 +67,8 @@ double **transpose(double **start, double **result, int x, int y) {
 double **inverse(double **matrix, double **identity, int size) {
 	int i, p, j, k;
 	double f;
+	// print_mat(identity, size, size);
+	// print_mat(matrix, size, size);
 
 	for(p = 0; p < size; p += 1) {
 		f = matrix[p][p];
@@ -65,44 +82,36 @@ double **inverse(double **matrix, double **identity, int size) {
 			f = matrix[i][p];
 
 			for(k = 0; k < size; k += 1) {
-				identity[i][k] = (identity[p][k] * f) - identity[i][k];
-				matrix[i][k] = (matrix[p][k] * f) - matrix[i][k];
+				identity[i][k] = identity[i][k] - (identity[p][k] * f);
+				matrix[i][k] = matrix[i][k] - (matrix[p][k] * f);
 			}
 
 		}
 
 	}
 
-	for(p = size - 1; p <= 0; p += 1) {
-		for(i = size - 1; i <= 0; i += 1) {
+	puts("upper triangular");
+	print_mat(matrix, size, size);
+	puts(" ");
+	print_mat(identity, size, size);
+
+	for(p = size - 1; p >= 0; p -= 1) {
+		for(i = p - 1; i >= 0; i -= 1) {
 			f = matrix[i][p];
 			for(k = 0; k < size; k += 1) {
-				identity[i][k] = (identity[p][k] * f) - identity[i][k];
-				matrix[i][k] = (matrix[p][k] * f) - matrix[i][k];
+				identity[i][k] = identity[i][k] - (identity[p][k] * f);
+				matrix[i][k] = matrix[i][k] - (matrix[p][k] * f);
 			}
 
 		}
 
 	}
 
-
 	return identity;
+
 }
 
-void print_mat(double **matrix, int row, int col) {
-    int i, j;
-    for (i = 0; i < row; i += 1) {
-        for (j = 0; j < col; j += 1) {
-            if (j == col - 1){
-                printf("%.2f", matrix[i][j]);
-                continue;
-            }
-            printf("%.2f ", matrix[i][j]);
-        }
-        printf("\n");
-    }
-    return;
-}
+
 
 void set_zero(double **matrix, int row, int col){
 	int i, j;
@@ -214,6 +223,8 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
+	puts("identity");
+	print_mat(identity, attrib+1, attrib+1);
 
 
 	//doing the math
@@ -221,7 +232,7 @@ int main(int argc, char **argv) {
 	
 	
 	
-	identity = inverse(XtX, identity, attrib+1); // attrib+1 x attrib+1
+	
 
 	puts("X");
 	print_mat(X, t_rows, attrib+1);
@@ -237,10 +248,11 @@ int main(int argc, char **argv) {
 	puts("XtY");
 	print_mat(XtY, attrib+1, 1);
 
-	XtX = multiply(X, t_rows, attrib+1, Xt, attrib+1, t_rows, XtX); // attrib+1 x t_rows | t_rows x attrib+1 = attrib+1 x attrib+1
+	XtX = multiply(Xt, attrib+1, t_rows, X, t_rows, attrib+1, XtX); // attrib+1 x t_rows | t_rows x attrib+1 = attrib+1 x attrib+1
 	puts("XtX");
 	print_mat(XtX, attrib+1, attrib+1);
 
+	identity = inverse(XtX, identity, attrib+1); // attrib+1 x attrib+1
 	puts("identity");
 	print_mat(identity, attrib+1, attrib+1);
 
