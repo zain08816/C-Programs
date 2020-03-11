@@ -4,26 +4,28 @@
 #include <stdlib.h>
 
 void print_mat(double **matrix, int row, int col) {
+	// printf("\n");
     int i, j;
     for (i = 0; i < row; i += 1) {
         for (j = 0; j < col; j += 1) {
             if (j == col - 1){
-                printf("%.2f", matrix[i][j]);
+                printf("%.0f", matrix[i][j]);
                 continue;
             }
-            printf("%.2f ", matrix[i][j]);
+            printf("%.0f ", matrix[i][j]);
         }
         printf("\n");
     }
     return;
 }
 
+
 double **multiply(double **mat1, int x1, int y1, double **mat2, int x2, int y2, double **result) {
 	int i, j, k;
-	double total;
+	// double total;
 
 	if (y1 != x2) {
-		printf("non multipliable matrixies");
+		printf("non multipliable matrixies\n");
 		return NULL;
 	}
 	// puts("multipying");
@@ -32,7 +34,7 @@ double **multiply(double **mat1, int x1, int y1, double **mat2, int x2, int y2, 
 		for(j = 0; j < y2; j += 1){
 			for (k = 0; k < y1; k += 1){
 				// printf(" %d ", k);
-				total += mat1[i][k] * mat2[k][j];
+				result[i][j] += mat1[i][k] * mat2[k][j];
 				// printf("%.2f", mat1[i][k]);
 				// printf("*%.2f=", mat2[k][j]);
 				// printf("%.2f", total);
@@ -41,8 +43,8 @@ double **multiply(double **mat1, int x1, int y1, double **mat2, int x2, int y2, 
 			// printf("%d ", total);
 			// printf("%.2f\t", total);
 			
-			result[i][j] = total;
-			total = 0.0;
+			// result[i][j] = total;
+			// total = 0.0;
 		}
 		// printf("\n");
     }
@@ -51,12 +53,12 @@ double **multiply(double **mat1, int x1, int y1, double **mat2, int x2, int y2, 
 }
 
 double **transpose(double **start, double **result, int x, int y) {
-
 	int i, j;
+
 	for (i = 0; i < x; i += 1) {
 		for(j = 0; j < y; j += 1) {
 			// start[i][j] = result[j][i];
-			result[i][j] = start[j][i];
+			result[j][i] = start[i][j];
 		}
 	}
 
@@ -67,7 +69,10 @@ double **transpose(double **start, double **result, int x, int y) {
 double **inverse(double **matrix, double **identity, int size) {
 	int i, p, j, k;
 	double f;
+	// printf("size: %d\n", size);
+	// puts("indentity");
 	// print_mat(identity, size, size);
+	// puts("matrix");
 	// print_mat(matrix, size, size);
 
 	for(p = 0; p < size; p += 1) {
@@ -90,10 +95,10 @@ double **inverse(double **matrix, double **identity, int size) {
 
 	}
 
-	puts("upper triangular");
-	print_mat(matrix, size, size);
-	puts(" ");
-	print_mat(identity, size, size);
+	// puts("upper triangular");
+	// print_mat(matrix, size, size);
+	// puts(" ");
+	// print_mat(identity, size, size);
 
 	for(p = size - 1; p >= 0; p -= 1) {
 		for(i = p - 1; i >= 0; i -= 1) {
@@ -107,10 +112,17 @@ double **inverse(double **matrix, double **identity, int size) {
 
 	}
 
+	// puts("indentity");
+	// print_mat(identity, size, size);
+	// puts("matrix");
+	// print_mat(matrix, size, size);
+
+
 	return identity;
 
-}
 
+
+}
 
 
 void set_zero(double **matrix, int row, int col){
@@ -120,6 +132,17 @@ void set_zero(double **matrix, int row, int col){
 			matrix[i][j] = 0;
 		}
 	}
+	return;
+}
+
+void free_mat(double **matrix, int size) {
+	int i;
+
+	for(i = 0; i < size; i += 1) {
+        free(matrix[i]);
+    }
+    free(matrix);
+
 	return;
 }
 
@@ -143,12 +166,12 @@ int main(int argc, char **argv) {
     }
 
 	fscanf(data_f, " %s", data_name);
-	fscanf(data_f, " %d", &d_attrib);
-	fscanf(data_f, " %d\n", &houses);
+	fscanf(data_f, " %d", &d_attrib); // att
+	fscanf(data_f, " %d", &houses); // m
 	
 	fscanf(train_f, " %s", train_name);
-	fscanf(train_f, " %d", &attrib);
-	fscanf(train_f, " %d\n", &t_rows);
+	fscanf(train_f, " %d", &attrib); // k
+	fscanf(train_f, " %d", &t_rows); // n
 
 
 	// allocating memory based on size
@@ -158,11 +181,6 @@ int main(int argc, char **argv) {
     } // t_rows x attrib+1
 	set_zero(X, t_rows, attrib+1);
 
-	double **Xt = malloc((attrib+1) * sizeof(double*));
-    for(i = 0; i < (attrib+1); i += 1){
-        Xt[i] = malloc(t_rows * sizeof(double));
-    } // attrib+1 x t_rows
-	set_zero(Xt, attrib+1, t_rows);
 
 	double **Y = malloc(t_rows * sizeof(double*));
     for(i = 0; i < t_rows; i += 1){
@@ -170,23 +188,34 @@ int main(int argc, char **argv) {
     } //t_rows x 1
 	set_zero(Y, t_rows, 1);
 
+
+	double **Xt = malloc((attrib+1) * sizeof(double*));
+    for(i = 0; i < (attrib+1); i += 1){
+        Xt[i] = malloc(t_rows * sizeof(double));
+    } // attrib+1 x t_rows
+	set_zero(Xt, attrib+1, t_rows);
+
+
 	double **W = malloc((attrib+1) * sizeof(double*));
     for(i = 0; i < (attrib+1); i += 1){
         W[i] = malloc(1 * sizeof(double));
     } //attrib+1 x 1
 	set_zero(W, attrib+1, 1);
 
-	double **XtY = malloc((attrib+1) * sizeof(double*));
-    for(i = 0; i < (attrib+1); i += 1){
-        XtY[i] = malloc(1 * sizeof(double));
-    } // attrib+1 x t_rows| t_rows x 1 = attrib+1 x 1
-	set_zero(XtY, attrib+1, 1);
 
 	double **XtX = malloc((attrib+1) * sizeof(double*));
     for(i = 0; i < (attrib+1); i += 1){
-        XtX[i] = malloc(t_rows * sizeof(double));
+        XtX[i] = malloc((attrib+1) * sizeof(double));
     } // attrib+1 x t_rows | t_rows x attrib+1 = attrib+1 x attrib+1
 	set_zero(XtX, attrib+1, attrib+1);
+
+
+	double **invXt = malloc((attrib+1) * sizeof(double*));
+    for(i = 0; i < (attrib+1); i += 1){
+        invXt[i] = malloc(t_rows * sizeof(double));
+    } // attrib+1 x attrib+1 | attrib+1 x t_rows = attrib+1 x t_rows
+	set_zero(invXt, attrib+1, t_rows);
+
 
 	double **identity = malloc((attrib+1) * sizeof(double*));
     for(i = 0; i < (attrib+1); i += 1){
@@ -194,11 +223,13 @@ int main(int argc, char **argv) {
     } // attrib+1 x attrib+1 
 	set_zero(identity, attrib+1, attrib+1);
 
+
 	double **X_prime = malloc((houses) * sizeof(double*));
     for(i = 0; i < (houses); i += 1){
         X_prime[i] = malloc((d_attrib+1) * sizeof(double));
     } // houses x d_attrib+1
 	set_zero(X_prime, houses, d_attrib+1);
+
 
 	double **Y_prime = malloc((houses) * sizeof(double*));
     for(i = 0; i < (houses); i += 1){
@@ -210,25 +241,22 @@ int main(int argc, char **argv) {
 
 
 
-
-
 	// copying data to proper locations
 	int j, k;
 	double num;
     for(j = 0; j < t_rows; j += 1){
-		fscanf(train_f, " %lf", &num);
-		// printf("%.0f\n", num);
-		Y[j][0] = num;
         X[j][0] = 1.0;
-
         for(k = 1; k < attrib+1; k += 1) {
             fscanf(train_f, " %lf", &num);
 			// printf("%.0f\n", num);
             X[j][k] = num;
         }
+		fscanf(train_f, " %lf", &num);
+		// printf("%.0f\n", num);
+		Y[j][0] = num;
     }
 
-	//setting up W_prime with data
+	//setting up X_prime with data
 	for (j = 0; j < houses; j += 1) {
 		X_prime[j][0] = 1.0;
 		for(k = 1; k < d_attrib+1; k += 1) {
@@ -249,57 +277,82 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
+
+	fclose(train_f);
+	fclose(data_f);
 	
 
 
 	//doing the math
+\
+	// puts("identity");
+	// print_mat(identity, attrib+1, attrib+1);
 
-	
-	
-	puts("identity");
-	print_mat(identity, attrib+1, attrib+1);
+	// puts("X");
+	// print_mat(X, t_rows, attrib+1);
 
-	puts("X");
-	print_mat(X, t_rows, attrib+1);
+	// puts("Y");
+	// print_mat(Y, t_rows, 1);
 
-	puts("Y");
-	print_mat(Y, t_rows, 1);
-
-	puts("X_prime");
-	print_mat(X_prime, houses, d_attrib+1);
+	// puts("X_prime");
+	// print_mat(X_prime, houses, d_attrib+1);
 	
 	Xt = transpose(X, Xt, t_rows, attrib+1); // attrib+1 x t_rows
-	puts("Xt");
-	print_mat(Xt, attrib+1, t_rows);
-
-	XtY = multiply(Xt, t_rows, attrib+1, Y, t_rows, 1, XtY); // attrib+1 x t_rows| t_rows x 1 = attrib+1 x 1
-	puts("XtY");
-	print_mat(XtY, attrib+1, 1);
+	// puts("Xt");
+	// print_mat(Xt, attrib+1, t_rows);
 
 	XtX = multiply(Xt, attrib+1, t_rows, X, t_rows, attrib+1, XtX); // attrib+1 x t_rows | t_rows x attrib+1 = attrib+1 x attrib+1
-	puts("XtX");
-	print_mat(XtX, attrib+1, attrib+1);
+	// puts("XtX");
+	// print_mat(XtX, attrib+1, attrib+1);
 
-	identity = inverse(XtX, identity, attrib+1); // attrib+1 x attrib+1
-	puts("identity");
-	print_mat(identity, attrib+1, attrib+1);
+	identity = inverse(XtX, identity, attrib+1);
+	 // attrib+1 x attrib+1
+	//printf("\n");
+	// print_mat(identity, attrib+1, attrib+1);
+	// print_mat(W, attrib+1, 1);
+	// print_mat(Y_prime, houses, 1);
+	// print_mat(Xt, attrib+1, t_rows);
+	// print_mat(invXt, attrib+1, t_rows);
 
-	W = multiply(identity, attrib+1, attrib+1, XtY, attrib+1, 1, W); //attrib+1 x 1
-	puts("W");
-	print_mat(W, attrib+1, 1);
+	invXt = multiply(identity, attrib+1, attrib+1, Xt, attrib+1, t_rows, invXt); //attrib+1 x t_rows
+	// puts("invXt");
+	// print_mat(invXt, attrib+1, t_rows);
+	// print_mat(Y, t_rows, 1);
+	
+
+	
+	W = multiply(invXt, attrib+1, t_rows, Y, t_rows, 1, W); //attrib+1 x 1
+	// puts("W");
+	// print_mat(W, attrib+1, 1);
+	// print_mat(X_prime, houses, d_attrib+1);
 
 	
 	Y_prime = multiply(X_prime, houses, d_attrib+1, W, attrib+1, 1, Y_prime); // houses x 1
-	puts("Y_prime");
+	// puts("Y_prime");
+	// printf(stdout, "I will be printed immediately");
+	
+	// setbuf(stdout, NULL);
 	print_mat(Y_prime, houses, 1);
+
+	free_mat(X, t_rows);
+	free_mat(Y, t_rows);
+	free_mat(Xt, attrib+1);
+	free_mat(W, attrib+1);
+	free_mat(XtX, attrib+1);
+	free_mat(invXt, attrib+1);
+	free_mat(identity, attrib+1);
+	free_mat(X_prime, houses);
+	free_mat(Y_prime, houses);
+
+	
 	
 
 	// W = (XtX)^-1XtY
 	// Y nx1 (Data)
 	// X nxm (Train)
 
-	fclose(train_f);
-	fclose(data_f);
+
+
 	
 	return 0;
 }

@@ -1,6 +1,6 @@
 TARGET  = estimate
 CC      = clang
-OPT     =
+OPT     = 
 CFLAGS  = -g -std=c99 -Wall -Wvla -Werror -fsanitize=address $(if $(findstring clang,$(CC)),-fsanitize=undefined) $(OPT)
 
 $(TARGET): $(TARGET).c
