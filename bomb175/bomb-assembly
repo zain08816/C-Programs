@@ -528,13 +528,13 @@ Disassembly of section .text:
  8048d9e:	89 74 24 04          	mov    %esi,0x4(%esp)
  8048da2:	8d 43 ff             	lea    -0x1(%ebx),%eax
  8048da5:	89 04 24             	mov    %eax,(%esp)
- 8048da8:	e8 d8 ff ff ff       	call   8048d85 <func6>
+ 8048da8:	e8 d8 ff ff ff       	call   8048d85 <func6> //func6(n-1)
  8048dad:	8d 3c 30             	lea    (%eax,%esi,1),%edi
  8048db0:	89 74 24 04          	mov    %esi,0x4(%esp)
  8048db4:	83 eb 02             	sub    $0x2,%ebx
  8048db7:	89 1c 24             	mov    %ebx,(%esp)
- 8048dba:	e8 c6 ff ff ff       	call   8048d85 <func6>
- 8048dbf:	01 f8                	add    %edi,%eax
+ 8048dba:	e8 c6 ff ff ff       	call   8048d85 <func6> //func6(n-2)
+ 8048dbf:	01 f8                	add    %edi,%eax //func6(n-1) + func6(n-2)
  8048dc1:	eb 05                	jmp    8048dc8 <func6+0x43>
  8048dc3:	b8 00 00 00 00       	mov    $0x0,%eax
  8048dc8:	83 c4 10             	add    $0x10,%esp
