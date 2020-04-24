@@ -11,24 +11,26 @@
 typedef enum { AND, OR, NAND, NOR, XOR, NOT, PASS, DECODER, MULTIPLEXER } type;
 
 
-struct node {
-    int var;
-    char name[20];
-    struct node *next;
-};
+
 
 struct gate {
     type op_type;
+    int solved;
     int variables;
     int temps;
-    char name[100][20];
-    int solved;
     int selectors;
+    char name[50][20];
 };
 
 struct hashtable {
     int size;
-    struct node **table;
+    struct node **array;
+};
+
+struct node {
+    int var;
+    struct node *next;
+    char name[20];
 };
 
 int gi; //global iterator
@@ -36,42 +38,27 @@ int *input_keys, *output_keys;
 int num_inputs, num_outputs;
 struct hashtable *inputs;
 struct hashtable *outputs;
-int temp_vars[300];
+int temp_vars[100];
 int num_temps = 0;
 struct gate *gate_list[100];
 int num_gates = 0;
 
-
-void create_table(int size, int type) {
-    if (type) {
-        inputs = malloc(sizeof(struct hashtable));
-        inputs -> size = size;
-        inputs -> table = malloc(sizeof(struct node*) * size);
-        for (gi = 0; gi < size; gi += 1) {
-            inputs -> table[gi] = NULL;
-        }
-    } else {
-        outputs = malloc(sizeof(struct hashtable));
-        outputs -> size = size;
-        outputs -> table = malloc(sizeof(struct node*) * size);
-        for (gi = 0; gi < size; gi += 1) {
-            outputs -> table[gi] = NULL;
-        }
+int hash_key(char var[]) {
+    int length = strlen(var);
+    int running = 0;
+    for (gi = 0; gi < length; gi += 1) {
+        running += var[gi] * (10+gi);
     }
+    return abs(running % 1000);
 }
 
-void reset() {
-    for (gi = 0; gi < num_gates; gi += 1) {
-        gate_list[gi] -> solved = 0;
-    }
-}
 
 int hash_search(char name[], int key, int type) {
     struct node *chain;
     if (type) {
-        chain = inputs -> table[key];
+        chain = inputs -> array[key];
     } else {
-        chain = outputs -> table[key];
+        chain = outputs -> array[key];
     }
     
     while(chain != NULL) {
@@ -83,37 +70,13 @@ int hash_search(char name[], int key, int type) {
     return 0;
 }
 
-void hash_insert(char name[], int key, int type) {
-    if (hash_search(name, key, type) == 1) return;
-
-    struct hashtable *table;
-    if(type) {
-        table = inputs;
-    } else {
-        table = outputs;
-    }
-
-    // struct node *temp;
-    struct node *insert = malloc(sizeof(struct node));
-    if (table -> table[key] == NULL) {
-        strcpy(insert -> name, name);
-        insert -> var = -1;
-        insert -> next = NULL;
-        table -> table[key] = insert;
-    } else {
-        strcpy(insert -> name, name);
-        insert -> var =  -1;
-        insert -> next = table -> table[key];
-        table -> table[key] = insert;
-    }
-}
 
 void hash_set(char name[], int key, int type, int value) {
     struct node *chain;
     if (type) {
-        chain = inputs -> table[key];
+        chain = inputs -> array[key];
     } else {
-        chain = outputs -> table[key];
+        chain = outputs -> array[key];
     }
 
     while(1) {
@@ -125,19 +88,12 @@ void hash_set(char name[], int key, int type, int value) {
     }
 }
 
-int hash_key(char var[]) {
-    int length = strlen(var);
-    int running = 0;
-    for (gi = 0; gi < length; gi += 1) {
-        running += var[gi] * (10+gi);
-    }
-    return abs(running % 1000);
-}
+
 
 int hash_get(char var[], int key, int type) {
     struct node *chain;
-    if (type) chain = inputs -> table[key];
-    else chain = outputs -> table[key];
+    if (type) chain = inputs -> array[key];
+    else chain = outputs -> array[key];
 
     while (chain != NULL) {
         if (strcmp(chain -> name, var) == 0) return chain -> var;
@@ -147,7 +103,7 @@ int hash_get(char var[], int key, int type) {
 }
 
 void solve_circuit() {
-    int i, j, key, count, num_solved, skip, get_in, get_out, num_found;
+    int i, j, key, indexer, num_solved, skip, get_in, get_out, num_found;
     //pow(2, num_inputs)
 
     for (i = 0; i < pow(2, num_inputs); i += 1) {
@@ -161,23 +117,24 @@ void solve_circuit() {
             else binary = 0;
             printf("%d ", binary);
             key = input_keys[num_inputs-j-1];
-            hash_set(inputs -> table[key] -> name, key, 1, binary);
+            hash_set(inputs -> array[key] -> name, key, 1, binary);
         }
         printf("|");
         num_solved = 0;
         int first, second, var_value, find, output_value, section, search_in, value, var_count;
         char *var_name;
-        for (count = 0; 1 < 2; count += 1) {
+        for (indexer = 0; num_solved != num_gates; indexer += 1) {
             num_found = 0;
             first = -1; second = -1;
-            if (count == num_gates) count = 0;
-            if (num_solved == num_gates) break;
-            if (gate_list[count] -> solved == 0) { // UNSOLVED
+            if (indexer == num_gates){
+                indexer = 0;
+            } 
+            if (gate_list[indexer] -> solved == 0) { // UNSOLVED
                 
-                switch(gate_list[count] -> op_type) {
+                switch(gate_list[indexer] -> op_type) {
                     case AND:
-                        for (j = 0; j < gate_list[count] -> variables-1; j += 1) {
-                            var_name = gate_list[count] -> name[j];
+                        for (j = 0; j < gate_list[indexer] -> variables; j += 1) {
+                            var_name = gate_list[indexer] -> name[j];
                             key = hash_key(var_name);
                             var_value = hash_get(var_name, key, 1);
 
@@ -197,19 +154,19 @@ void solve_circuit() {
                         }
                         if (num_found == 2) {
                             output_value = first && second;
-                            var_name = gate_list[count] -> name[2];
+                            var_name = gate_list[indexer] -> name[2];
                             key = hash_key(var_name);
                             get_in = hash_search(var_name, key, 1);
                             if (get_in == 1) hash_set(var_name, key, 1, output_value);
                             else hash_set(var_name, key, 0, output_value);
-                            gate_list[count] -> solved = 1;
+                            gate_list[indexer] -> solved = 1;
                             num_solved += 1;
                         } else continue;
                         break;
 
                     case NAND:
-                        for (j = 0; j < gate_list[count] -> variables-1; j += 1) {
-                            var_name = gate_list[count] -> name[j];
+                        for (j = 0; j < gate_list[indexer] -> variables; j += 1) {
+                            var_name = gate_list[indexer] -> name[j];
                             key = hash_key(var_name);
                             var_value = hash_get(var_name, key, 1);
 
@@ -229,19 +186,19 @@ void solve_circuit() {
                         }
                         if (num_found == 2) {
                             output_value = !(first && second);
-                            var_name = gate_list[count] -> name[2];
+                            var_name = gate_list[indexer] -> name[2];
                             key = hash_key(var_name);
                             get_in = hash_search(var_name, key, 1);
                             if (get_in == 1) hash_set(var_name, key, 1, output_value);
                             else hash_set(var_name, key, 0, output_value);
-                            gate_list[count] -> solved = 1;
+                            gate_list[indexer] -> solved = 1;
                             num_solved += 1;
                         } else continue;
                         break;
 
                     case OR:
-                        for (j = 0; j < gate_list[count] -> variables-1; j += 1) {
-                            var_name = gate_list[count] -> name[j];
+                        for (j = 0; j < gate_list[indexer] -> variables; j += 1) {
+                            var_name = gate_list[indexer] -> name[j];
                             key = hash_key(var_name);
                             var_value = hash_get(var_name, key, 1);
 
@@ -260,20 +217,20 @@ void solve_circuit() {
                             }
                         }
                         if (num_found == 2) {
+                            num_solved += 1;
                             output_value = first || second;
-                            var_name = gate_list[count] -> name[2];
+                            var_name = gate_list[indexer] -> name[2];
                             key = hash_key(var_name);
                             get_in = hash_search(var_name, key, 1);
+                            gate_list[indexer] -> solved = 1;
                             if (get_in == 1) hash_set(var_name, key, 1, output_value);
                             else hash_set(var_name, key, 0, output_value);
-                            gate_list[count] -> solved = 1;
-                            num_solved += 1;
                         } else continue;
                         break;
 
                     case NOR:
-                        for (j = 0; j < gate_list[count] -> variables-1; j += 1) {
-                            var_name = gate_list[count] -> name[j];
+                        for (j = 0; j < gate_list[indexer] -> variables; j += 1) {
+                            var_name = gate_list[indexer] -> name[j];
                             key = hash_key(var_name);
                             var_value = hash_get(var_name, key, 1);
 
@@ -292,20 +249,22 @@ void solve_circuit() {
                             }
                         }
                         if (num_found == 2) {
+                            num_solved += 1;
                             output_value = !(first || second);
-                            var_name = gate_list[count] -> name[2];
+                            var_name = gate_list[indexer] -> name[2];
                             key = hash_key(var_name);
                             get_in = hash_search(var_name, key, 1);
+                            gate_list[indexer] -> solved = 1;
                             if (get_in == 1) hash_set(var_name, key, 1, output_value);
                             else hash_set(var_name, key, 0, output_value);
-                            gate_list[count] -> solved = 1;
-                            num_solved += 1;
+                            
+                            
                         } else continue;
                         break;
 
                     case XOR:
-                        for (j = 0; j < gate_list[count] -> variables-1; j += 1) {
-                            var_name = gate_list[count] -> name[j];
+                        for (j = 0; j < gate_list[indexer] -> variables; j += 1) {
+                            var_name = gate_list[indexer] -> name[j];
                             key = hash_key(var_name);
                             var_value = hash_get(var_name, key, 1);
 
@@ -324,49 +283,51 @@ void solve_circuit() {
                             }
                         }
                         if (num_found == 2) {
+                            num_solved += 1;
                             output_value = first ^ second;
-                            var_name = gate_list[count] -> name[2];
+                            var_name = gate_list[indexer] -> name[2];
                             key = hash_key(var_name);
                             get_in = hash_search(var_name, key, 1);
+                            gate_list[indexer] -> solved = 1;
                             if (get_in == 1) hash_set(var_name, key, 1, output_value);
                             else hash_set(var_name, key, 0, output_value);
-                            gate_list[count] -> solved = 1;
-                            num_solved += 1;
                         } else continue;
                         break;
 
                     case NOT:
-                        var_name = gate_list[count] -> name[0];
+                        var_name = gate_list[indexer] -> name[0];
                         key = hash_key(var_name);
                         output_value = hash_get(var_name, key, 1);
                         output_value = !output_value;
                         if (output_value != -1) {
-                            var_name = gate_list[count] -> name[1];
-                            // printf( "%s\n", var_name);
+                            num_solved += 1;
+                            var_name = gate_list[indexer] -> name[1];
+                            // printf( "%16s\n", var_name);
                             key = hash_key(var_name);
                             get_in = hash_search(var_name, key, 1);
+                            gate_list[indexer] -> solved = 1;
                             if (get_in == 1) hash_set(var_name, key, 1, output_value);
                             else hash_set(var_name, key, 0, output_value);
-                            gate_list[count] -> solved = 1;
-                            num_solved += 1;
+                            
                         } else continue;
 
                         break;
 
                     case PASS:
-                        var_name = gate_list[count] -> name[0];
+                        var_name = gate_list[indexer] -> name[0];
                         key = hash_key(var_name);
                         output_value = hash_get(var_name, key, 1);
                         output_value = !output_value;
                         if (output_value != -1) {
-                            var_name = gate_list[count] -> name[1];
-                            // printf( "%s\n", var_name);
+                            num_solved += 1;
+                            var_name = gate_list[indexer] -> name[1];
+                            // printf( "%16s\n", var_name);
                             key = hash_key(var_name);
                             get_in = hash_search(var_name, key, 1);
+                            gate_list[indexer] -> solved = 1;
                             if (get_in == 1) hash_set(var_name, key, 1, output_value && 1);
                             else hash_set(var_name, key, 0, output_value);
-                            gate_list[count] -> solved = 1;
-                            num_solved += 1;
+                            
                         } else continue;
 
                         break;
@@ -374,8 +335,8 @@ void solve_circuit() {
                     case DECODER:
 
                         skip = 0;
-                        for (j =0; j < gate_list[count] -> selectors; j += 1) {
-                            var_name = gate_list[count] -> name[j];
+                        for (j =0; j < gate_list[indexer] -> selectors; j += 1) {
+                            var_name = gate_list[indexer] -> name[j];
                             key = hash_key(var_name);
                             get_in = hash_get(var_name, key, 1);
                             get_out = hash_get(var_name, key, 0);
@@ -388,8 +349,8 @@ void solve_circuit() {
                         if (skip) { continue; }
                         section = 0;
 
-                        for (j = 0; j < gate_list[count] -> selectors; j += 1) {
-                            var_name = gate_list[count] -> name[j];
+                        for (j = 0; j < gate_list[indexer] -> selectors; j += 1) {
+                            var_name = gate_list[indexer] -> name[j];
                             key = hash_key(var_name);
                             get_in = hash_get(var_name, key, 1);
                             get_out = hash_get(var_name, key, 0);
@@ -401,8 +362,8 @@ void solve_circuit() {
                         }
 
                         find = 0;
-                        for (j = gate_list[count] -> selectors; j < gate_list[count] -> variables; j += 1) {
-                            var_name = gate_list[count] -> name[j];
+                        for (j = gate_list[indexer] -> selectors; j < gate_list[indexer] -> variables+1; j += 1) {
+                            var_name = gate_list[indexer] -> name[j];
                             key = hash_key(var_name);
                             search_in = hash_search(var_name, key, 1);
 
@@ -417,7 +378,7 @@ void solve_circuit() {
                             find += 1;
                         }
 
-                        gate_list[count] -> solved = 1;
+                        gate_list[indexer] -> solved = 1;
                         num_solved += 1;
 
                         break;
@@ -425,8 +386,8 @@ void solve_circuit() {
                     case MULTIPLEXER:
 
                         skip = 0;
-                        for (j = 0; j < gate_list[count] -> variables-1; j += 1) {
-                            var_name = gate_list[count] -> name[j];
+                        for (j = 0; j < gate_list[indexer] -> variables; j += 1) {
+                            var_name = gate_list[indexer] -> name[j];
                             key = hash_key(var_name);
                             get_in = hash_get(var_name, key, 1);
                             get_out = hash_get(var_name, key, 0);
@@ -439,8 +400,8 @@ void solve_circuit() {
                         if (skip == 1) { continue; }
 
                         section = 0;
-                        for (j = pow(2, gate_list[count] -> selectors); j < gate_list[count] -> variables-1; j += 1) {
-                            var_name = gate_list[count] -> name[j];
+                        for (j = pow(2, gate_list[indexer] -> selectors); j < gate_list[indexer] -> variables; j += 1) {
+                            var_name = gate_list[indexer] -> name[j];
                             key = hash_key(var_name);
                             get_in = hash_get(var_name, key, 1);
                             get_out = hash_get(var_name, key, 0);
@@ -452,19 +413,19 @@ void solve_circuit() {
                             section += var_value; 
                         }
 
-                        var_name = gate_list[count] -> name[section];
+                        var_name = gate_list[indexer] -> name[section];
                         key = hash_key(var_name);
                         value = hash_get(var_name, key, 1);
                         if (value == -1) { value = hash_get(var_name, key, 1); }
-                        var_count = gate_list[count] -> variables-1;
-                        var_name = gate_list[count] -> name[var_count];
+                        var_count = gate_list[indexer] -> variables;
+                        var_name = gate_list[indexer] -> name[var_count];
                         key = hash_key(var_name);
                         if (hash_search(var_name, key, 1) == 1) {
                             hash_set(var_name, key, 1, value);
                         } else {
                             hash_set(var_name, key, 0, value);
                         }
-                        gate_list[count] -> solved = 1;
+                        gate_list[indexer] -> solved = 1;
                         num_solved += 1;
 
                         break;
@@ -475,13 +436,13 @@ void solve_circuit() {
 
         for(j = 0; j < num_outputs; j += 1) {
             key = output_keys[j];
-            printf(" %d", outputs -> table[key] -> var);
-            outputs -> table[key] -> var = -1;
+            printf(" %d", outputs -> array[key] -> var);
+            outputs -> array[key] -> var = -1;
         }
         printf("\n");
         for (j = 0; j < num_temps; j += 1) {
             key = temp_vars[j];
-            inputs -> table[key] -> var = -1;
+            inputs -> array[key] -> var = -1;
         }
         for (j = 0; j < num_gates; j += 1) {
             gate_list[j] -> solved = 0;
@@ -506,56 +467,124 @@ int main(int argc, char** argv) {
     }
 
     // LOCALS
-    char buffer[256];
+    char buffer[30];
     int num_vars, i, key;
-    create_table(1000, 1); // create inputs hashmap
-    create_table(1000, 0); // create output hashmap
-    
+    inputs = (struct hashtable*) malloc(sizeof(struct hashtable));
+    outputs = (struct hashtable*) malloc(sizeof(struct hashtable));
+    inputs -> size = 1000;
+    inputs -> array = (struct node**) malloc(sizeof(struct node*) * 1000);
+    outputs -> size = 1000;
+    outputs -> array = (struct node**) malloc(sizeof(struct node*) * 1000);
+    for (gi = 0; gi < 1000; gi += 1) {
+        inputs -> array[gi] = NULL;
+        outputs -> array[gi] = NULL;
+    }
 
     // Inputs
-    fscanf(ins, " %s", buffer);
+    fscanf(ins, " %16s", buffer);
     fscanf(ins, " %d", &num_inputs);
-    input_keys = malloc(sizeof(int) * num_inputs);
+    input_keys = (int*) malloc(sizeof(int) * num_inputs);
     for(i = 0; i < num_inputs; i += 1) {
-        fscanf(ins, " %s", buffer);
+        fscanf(ins, " %16s", buffer);
         key = hash_key(buffer);
         input_keys[i] = key;
-        hash_insert(buffer, key, 1);
+        if (hash_search(buffer, key, 1) != 1) {
+            struct node *insert = (struct node*) malloc(sizeof(struct node));
+            if (inputs -> array[key] == NULL) {
+                insert -> next = NULL;
+                insert -> var = -1;
+                strcpy(insert -> name, buffer);
+                inputs -> array[key] = insert;
+            } else {
+                insert -> next = inputs -> array[key];
+                insert -> var = -1;
+                strcpy(insert -> name, buffer);
+                inputs -> array[key] = insert;
+            }
+
+        }
+       
     }
 
     // Outputs
-    fscanf(ins, " %s", buffer);
+    fscanf(ins, " %16s", buffer);
     fscanf(ins, " %d", &num_outputs);
-    output_keys = malloc(sizeof(int) * num_outputs);
+    output_keys = (int*) malloc(sizeof(int) * num_outputs);
     for (i = 0; i < num_outputs; i += 1) {
-        fscanf(ins, " %s", buffer);
+        fscanf(ins, " %16s", buffer);
         key = hash_key(buffer);
         output_keys[i] = key;
-        hash_insert(buffer, key, 0);
+        if (hash_search(buffer, key, 1) != 1) {
+            struct node *insert = (struct node*) malloc(sizeof(struct node));
+            if (outputs -> array[key] == NULL) {
+                insert -> next = NULL;
+                insert -> var = -1;
+                strcpy(insert -> name, buffer);
+                outputs -> array[key] = insert;
+            } else {
+                insert -> next = outputs -> array[key];
+                insert -> var = -1;
+                strcpy(insert -> name, buffer);
+                outputs -> array[key] = insert;
+            }
+
+        }
+ 
     }
 
 
     while (fscanf(ins, " %16s", buffer) != EOF) {
         struct gate *gate;
         if (strcmp(buffer, "AND") == 0) {
-            gate = malloc(sizeof(struct gate));
+            gate = (struct gate*) malloc(sizeof(struct gate));
             gate -> op_type = AND;
-            gate -> variables = 3;
+            gate -> variables = 2;
             gate -> solved = 0;
 
             for (i = 0; i < 3; i += 1) {
-                fscanf(ins, " %s", buffer);
+                fscanf(ins, " %16s", buffer);
                 key = hash_key(buffer);
                 int in_inputs = hash_search(buffer, key, 1);
                 int in_outputs = hash_search(buffer, key, 0);
                 if (isdigit(buffer[0]) != 0) {
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+             
+                    
                     hash_set(buffer, key, 1, buffer[0] - '0');
                 }
                 else if (!in_inputs && !in_outputs) {
                     temp_vars[num_temps] = key;
                     num_temps += 1;
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+             
                 }
                 strcpy(gate -> name[i], buffer);
             }
@@ -564,24 +593,54 @@ int main(int argc, char** argv) {
         }
 
         else if (strcmp(buffer, "OR") == 0) {
-            gate = malloc(sizeof(struct gate));
+            gate = (struct gate*) malloc(sizeof(struct gate));
             gate -> op_type = OR;
-            gate -> variables = 3;
+            gate -> variables = 2;
             gate -> solved = 0;
 
             for (i = 0; i < 3; i += 1) {
-                fscanf(ins, " %s", buffer);
+                fscanf(ins, " %16s", buffer);
                 key = hash_key(buffer);
                 int in_inputs = hash_search(buffer, key, 1);
                 int in_outputs = hash_search(buffer, key, 0);
                 if (isdigit(buffer[0]) != 0) {
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+                   
                     hash_set(buffer, key, 1, buffer[0] - '0');
                 }
                 else if (!in_inputs && !in_outputs) {
                     temp_vars[num_temps] = key;
                     num_temps += 1;
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+              
                 }
                 strcpy(gate -> name[i], buffer);
             }
@@ -590,24 +649,54 @@ int main(int argc, char** argv) {
         }
 
         else if (strcmp(buffer, "NAND") == 0) {
-            gate = malloc(sizeof(struct gate));
+            gate = (struct gate*) malloc(sizeof(struct gate));
             gate -> op_type = NAND;
-            gate -> variables = 3;
+            gate -> variables = 2;
             gate -> solved = 0;
 
             for (i = 0; i < 3; i += 1) {
-                fscanf(ins, " %s", buffer);
+                fscanf(ins, " %16s", buffer);
                 key = hash_key(buffer);
                 int in_inputs = hash_search(buffer, key, 1);
                 int in_outputs = hash_search(buffer, key, 0);
                 if (isdigit(buffer[0]) != 0) {
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+             
                     hash_set(buffer, key, 1, buffer[0] - '0');
                 }
                 else if (!in_inputs && !in_outputs) {
                     temp_vars[num_temps] = key;
                     num_temps += 1;
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+           
                 }
                 strcpy(gate -> name[i], buffer);
             }
@@ -616,24 +705,54 @@ int main(int argc, char** argv) {
         }
 
         else if (strcmp(buffer, "NOR") == 0) {
-            gate = malloc(sizeof(struct gate));
+            gate = (struct gate*) malloc(sizeof(struct gate));
             gate -> op_type = NOR;
-            gate -> variables = 3;
+            gate -> variables = 2;
             gate -> solved = 0;
 
             for (i = 0; i < 3; i += 1) {
-                fscanf(ins, " %s", buffer);
+                fscanf(ins, " %16s", buffer);
                 key = hash_key(buffer);
                 int in_inputs = hash_search(buffer, key, 1);
                 int in_outputs = hash_search(buffer, key, 0);
                 if (isdigit(buffer[0]) != 0) {
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+  
                     hash_set(buffer, key, 1, buffer[0] - '0');
                 }
                 else if (!in_inputs && !in_outputs) {
                     temp_vars[num_temps] = key;
                     num_temps += 1;
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+            
                 }
                 strcpy(gate -> name[i], buffer);
             }
@@ -642,24 +761,54 @@ int main(int argc, char** argv) {
         }
 
         else if (strcmp(buffer, "XOR") == 0) {
-            gate = malloc(sizeof(struct gate));
+            gate = (struct gate*) malloc(sizeof(struct gate));
             gate -> op_type = XOR;
-            gate -> variables = 3;
+            gate -> variables = 2;
             gate -> solved = 0;
 
             for (i = 0; i < 3; i += 1) {
-                fscanf(ins, " %s", buffer);
+                fscanf(ins, " %16s", buffer);
                 key = hash_key(buffer);
                 int in_inputs = hash_search(buffer, key, 1);
                 int in_outputs = hash_search(buffer, key, 0);
                 if (isdigit(buffer[0]) != 0) {
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+           
                     hash_set(buffer, key, 1, buffer[0] - '0');
                 }
                 else if (!in_inputs && !in_outputs) {
                     temp_vars[num_temps] = key;
                     num_temps += 1;
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+            
                 }
                 strcpy(gate -> name[i], buffer);
             }
@@ -668,24 +817,54 @@ int main(int argc, char** argv) {
         }
 
         else if (strcmp(buffer, "NOT") == 0) {
-            gate = malloc(sizeof(struct gate));
+            gate = (struct gate*) malloc(sizeof(struct gate));
             gate -> op_type = NOT;
-            gate -> variables = 2;
+            gate -> variables = 1;
             gate -> solved = 0;
 
             for (i = 0; i < 2; i += 1) {
-                fscanf(ins, " %s", buffer);
+                fscanf(ins, " %16s", buffer);
                 key = hash_key(buffer);
                 int in_inputs = hash_search(buffer, key, 1);
                 int in_outputs = hash_search(buffer, key, 0);
                 if (isdigit(buffer[0]) != 0) {
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+                  
                     hash_set(buffer, key, 1, buffer[0] - '0');
                 }
                 else if (in_inputs == 0 && in_outputs == 0) {
                     temp_vars[num_temps] = key;
                     num_temps += 1;
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+            
                 }
                 strcpy(gate -> name[i], buffer);
             }
@@ -694,25 +873,54 @@ int main(int argc, char** argv) {
         }
 
         else if (strcmp(buffer, "PASS") == 0) {
-            gate = malloc(sizeof(struct gate));
+            gate = (struct gate*) malloc(sizeof(struct gate));
             gate -> op_type = PASS;
-            gate -> variables = 2;
+            gate -> variables = 1;
             gate -> solved = 0;
 
             for (i = 0; i < 2; i += 1) {
-                fscanf(ins, " %s", buffer);
+                fscanf(ins, " %16s", buffer);
                 key = hash_key(buffer);
                 int in_inputs = hash_search(buffer, key, 1);
                 int in_outputs = hash_search(buffer, key, 0);
                 if (isdigit(buffer[0]) != 0) {
-                    puts("poop");
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+            
                     hash_set(buffer, key, 1, buffer[0] - '0');
                 }
                 else if (in_inputs == 0 && in_outputs == 0) {
                     temp_vars[num_temps] = key;
                     num_temps += 1;
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+            
                 }
                 strcpy(gate -> name[i], buffer);
             }
@@ -721,24 +929,54 @@ int main(int argc, char** argv) {
         }
 
         else if (strcmp(buffer, "DECODER") == 0) {
-            gate = malloc(sizeof(struct gate));
+            gate = (struct gate*) malloc(sizeof(struct gate));
             gate -> op_type = DECODER;
             gate -> solved = 0;
             fscanf(ins, " %d", &num_vars);
-            gate -> variables = num_vars + pow(2, num_vars);
+            gate -> variables = num_vars + pow(2, num_vars)-1;
             gate -> selectors = num_vars;
-            for (i = 0; i < gate -> variables; i += 1) {
-                fscanf(ins, " %s", buffer);
+            for (i = 0; i < gate -> variables+1; i += 1) {
+                fscanf(ins, " %16s", buffer);
                 key = hash_key(buffer); //THINK
                 int in_inputs = hash_search(buffer, key, 1);
                 int in_outputs = hash_search(buffer, key, 0);
                 if (isdigit(buffer[0]) != 0) {
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+                
                     hash_set(buffer, key, 1, buffer[0] - '0'); //THINK
                 } else if (!in_inputs && !in_outputs) {
                     temp_vars[num_temps] = key;
                     num_temps += 1;
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+                 
                 }
                 strcpy(gate -> name[i], buffer);
             }
@@ -747,25 +985,55 @@ int main(int argc, char** argv) {
         }
 
         else if (strcmp(buffer, "MULTIPLEXER") == 0) {
-            gate = malloc(sizeof(struct gate));
+            gate = (struct gate*) malloc(sizeof(struct gate));
             gate -> op_type = MULTIPLEXER;
             gate -> solved = 0;
             fscanf(ins, "%d", &num_vars);
-            gate -> variables = pow(2, num_vars) +  num_vars + 1;
+            gate -> variables = pow(2, num_vars) +  num_vars;
             gate -> selectors = num_vars;
-            for (i = 0; i < gate -> variables; i += 1) {
-                fscanf(ins, "%s", buffer);
+            for (i = 0; i < gate -> variables+1; i += 1) {
+                fscanf(ins, "%16s", buffer);
                 key = hash_key(buffer);
                 int in_inputs = hash_search(buffer, key, 1);
                 int in_outputs = hash_search(buffer, key, 0);
                 if (isdigit(buffer[0]) != 0) {
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+                   
                     hash_set(buffer, key, 1, buffer[0] - '0');
                 }
                 else if (!in_inputs && !in_outputs) {
                     temp_vars[num_temps] = key;
                     num_temps += 1;
-                    hash_insert(buffer, key, 1);
+                    if (hash_search(buffer, key, 1) != 1) {
+                        struct node *insert = (struct node*) malloc(sizeof(struct node));
+                        if (inputs -> array[key] == NULL) {
+                            insert -> next = NULL;
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        } else {
+                            insert -> next = inputs -> array[key];
+                            insert -> var = -1;
+                            strcpy(insert -> name, buffer);
+                            inputs -> array[key] = insert;
+                        }
+
+                    }
+             
                 }
                 strcpy(gate -> name[i], buffer);
             }
